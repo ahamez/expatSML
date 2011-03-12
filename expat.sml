@@ -3,12 +3,13 @@
 signature EXPAT = sig
 
   type parser
-  type tagHandler = string -> unit
 
   val mkParser    : unit -> parser
   val setHandlers : parser 
-                    -> tagHandler (* start handler *)
-                    -> tagHandler (* end handler   *)
+                       (* start tag handler *)
+                    -> (string -> (string * string) list -> unit)
+                       (* end tag handler *)
+                    -> (string -> unit)
                     -> unit
   val parseString : parser -> string -> unit
 
@@ -27,7 +28,6 @@ structure Ar = Array
 
 (* -------------------------------------------------------------------------- *)
 type parser = Pt.t Fz.t
-type tagHandler = string -> unit
 
 (* -------------------------------------------------------------------------- *)
 exception DoNotPanic
@@ -48,7 +48,7 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-val (startHandlers : tagHandler list ref) = ref []
+val startHandlers = ref []
 val endHandlers   = ref []
 
 (* -------------------------------------------------------------------------- *)
