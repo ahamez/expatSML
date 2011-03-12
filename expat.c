@@ -2,21 +2,21 @@
 #include "export.h"
 
 static void
-SML_start(void* data, const char* el, const char** attr)
+dispatch_start_tag(void* data, const char* el, const char** attr)
 {
   const int pos = ((int*)data)[0];
-  callStartHandler(pos, (void*)el);
+  SML_callStartHandler(pos, (void*)el, (void*)attr);
 }
 
 static void
-SML_end(void* data, const char* el)
+dispatch_end_tag(void* data, const char* el)
 {
   const int pos = ((int*)data)[1];
-  callEndHandler(pos, (void*)el);
+  SML_callEndHandler(pos, (void*)el);
 }
 
 void
-SML_SetElementHandler(XML_Parser p)
+C_SetElementHandler(XML_Parser p)
 {
-  XML_SetElementHandler(p, SML_start, SML_end);
+  XML_SetElementHandler(p, dispatch_start_tag, dispatch_end_tag);
 }

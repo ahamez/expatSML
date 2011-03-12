@@ -23,6 +23,7 @@ structure Expat : EXPAT = struct
 (* -------------------------------------------------------------------------- *)
 structure Pt = MLton.Pointer
 structure Fz = MLton.Finalizable
+structure Ar = Array
 
 (* -------------------------------------------------------------------------- *)
 type parser = Pt.t Fz.t
@@ -88,7 +89,7 @@ fun callStartHandler (pos, data) =
   List.nth (!startHandlers, pos) (fetchCString data)
 
 val cCallStartHandler =
-  _export "callStartHandler" : (int * Pt.t -> unit) -> unit;
+  _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
 val _ = cCallStartHandler callStartHandler
 
 (* -------------------------------------------------------------------------- *)
@@ -96,7 +97,7 @@ fun callEndHandler (pos, data) =
   List.nth (!endHandlers, pos) (fetchCString data)
 
 val cCallEndHandler =
-  _export "callEndHandler" : (int * Pt.t -> unit) -> unit;
+  _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
 val _ = cCallEndHandler callEndHandler
 
 (* -------------------------------------------------------------------------- *)
@@ -104,14 +105,14 @@ fun setHandlers x stardHandler endHandler =
 let
 
   val cSetElementHandler  =
-    _import "SML_SetElementHandler" public: Pt.t -> unit;
+    _import "C_SetElementHandler" public: Pt.t -> unit;
   val cSetUserData =
-    _import "XML_SetUserData" public: (Pt.t * int Array.array) -> unit;
+    _import "XML_SetUserData" public: (Pt.t * int Ar.array) -> unit;
 
   val p = getPointer x
   val startPos = registerStartHandler stardHandler
   val endPos   = registerEndHandler endHandler
-  val arr = Array.fromList [startPos,endPos]
+  val arr = Ar.fromList [startPos,endPos]
   val _ = cSetUserData (p, arr)
 in
   cSetElementHandler p
