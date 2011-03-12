@@ -63,6 +63,7 @@ in
   loop 0
 end
 
+(* -------------------------------------------------------------------------- *)
 fun fetchCString p =
   CharVector.tabulate ( strlen p
                       , fn i => Byte.byteToChar (MLton.Pointer.getWord8 (p,i))
@@ -85,8 +86,26 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun callStartHandler (pos, data) =
-  List.nth (!startHandlers, pos) (fetchCString data)
+fun callStartHandler (pos, cName, cAttrs) =
+let
+
+  fun loop acc ptr =
+    if Pt.getWord8(ptr, 0) = 0w0 then
+      acc
+    else
+    let
+      val attr = fetchCString (Pt.getPointer (ptr, 0))
+      val cont = fetchCString (Pt.getPointer (ptr, 1))
+    in
+      loop ((attr,cont)::acc)
+           (Pt.add (ptr, Pt.sizeofPointer * (Word.fromInt 2)))
+    end
+
+  val attrs = loop [] cAttrs
+
+in
+  List.nth (!startHandlers, pos) (fetchCString cName) attrs
+end
 
 val cCallStartHandler =
   _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
