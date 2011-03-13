@@ -59,6 +59,7 @@ let
   val cFree    = _import "XML_ParserFree" public: Pt.t -> unit;
   val cRes     = cCreate Pt.null
   val res      = Fz.new cRes
+  (* Will free the parser when no longer reachable in SML *)
   val _        = Fz.addFinalizer (res, fn x => cFree x)
   (* pos 0 => startHandler
      pos 1 => endHandler
