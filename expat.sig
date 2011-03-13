@@ -4,6 +4,8 @@ signature EXPAT = sig
 
   val mkParser                : unit -> parser
 
+  val parserReset             : parser -> parser
+
   val setElementHandlers      : parser
                                 (* start tag handler *)
                                 -> (string -> (string * string) list -> unit)
@@ -17,5 +19,7 @@ signature EXPAT = sig
                                 -> parser
 
   val parseString             : parser -> string -> unit
+
+  exception CannotReset
 
 end

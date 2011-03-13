@@ -12,6 +12,7 @@ type parser = Pt.t Fz.t * int Ar.array
 
 (* -------------------------------------------------------------------------- *)
 exception DoNotPanic
+exception CannotReset
 
 (* -------------------------------------------------------------------------- *)
 fun getPointer p = Fz.withValue (p, fn x => x)
@@ -54,6 +55,22 @@ let
   val _        = cSetUserData (cRes, handlers)
 in
   (res, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun parserReset (x, handlers) =
+let
+
+  val cReset  =
+    _import "XML_ParserReset" public: (Pt.t * Pt.t) -> int;
+
+  val p = getPointer x
+
+in
+  if cReset (p, Pt.null) = 1 then
+    (x, handlers)
+  else
+    raise CannotReset
 end
 
 (* -------------------------------------------------------------------------- *)
