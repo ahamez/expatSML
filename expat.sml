@@ -15,6 +15,7 @@ exception DoNotPanic
 exception CannotReset
 
 (* -------------------------------------------------------------------------- *)
+(* Return the parser stored in a Finalizable *)
 fun getPointer p = Fz.withValue (p, fn x => x)
 
 (* -------------------------------------------------------------------------- *)
