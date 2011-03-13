@@ -9,6 +9,9 @@ open ExpatUtil
 
 (* -------------------------------------------------------------------------- *)
 type parser = Pt.t Fz.t * int Ar.array
+type startTagHandler      = (string -> (string * string) list -> unit)
+type endTagHandler        = (string -> unit)
+type characterDataHandler = (string -> unit)
 
 (* -------------------------------------------------------------------------- *)
 exception Error of ExpatErrors.error * string * int * int
@@ -134,7 +137,7 @@ fun callCharacterDataHandler (0, _, _) = ()
   SHV.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
 
 (* -------------------------------------------------------------------------- *)
-fun setElementHandlers (x, handlers) startHandler endHandler =
+fun setElementHandlers (x, handlers) startHandlerOpt endHandlerOpt =
 let
 
   val cSetElementHandler  =
@@ -148,6 +151,12 @@ let
     _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
   val _ = cCallEndHandler callEndHandler
 
+  val startHandler = case startHandlerOpt of NONE   => (fn _ => fn _ => ())
+                                           | SOME x => x
+
+  val endHandler = case endHandlerOpt of NONE   => (fn _ => ())
+                                       | SOME x => x
+
   val p = getPointer x
   val startPos = StHV.size (StHV.pushBack startHandlers startHandler)
   val endPos   = SHV.size  (SHV.pushBack endHandlers endHandler)
@@ -159,7 +168,7 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun setCharacterDataHandler (x, handlers) handler =
+fun setCharacterDataHandler (x, handlers) handlerOpt =
 let
 
   val cSetCharacterDataHandler  =
@@ -169,6 +178,8 @@ let
     _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
   val _ = cCallCharacterDataHandler callCharacterDataHandler
 
+  val handler = case handlerOpt of NONE   => (fn _ => ())
+                                 | SOME x => x
   val p   = getPointer x
   val pos = SHV.size (SHV.pushBack characterDataHandlers handler)
   val _   = Ar.update (handlers, 2, pos)
