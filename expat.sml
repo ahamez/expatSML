@@ -11,7 +11,7 @@ open ExpatUtil
 type parser = Pt.t Fz.t * int Ar.array
 
 (* -------------------------------------------------------------------------- *)
-exception DoNotPanic
+exception Error of ExpatErrors.error * string * int * int
 exception CannotReset
 
 (* -------------------------------------------------------------------------- *)
@@ -182,6 +182,33 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
+fun getError (x, handlers) =
+let
+
+  val cGetErrorCode =
+    _import "XML_GetErrorCode" public: Pt.t -> int;
+
+  val cErrorString =
+    _import "XML_ErrorString" public: int -> Pt.t;
+
+  val cGetLine =
+    _import "XML_GetCurrentLineNumber" public: Pt.t ->int;
+
+  val cGetColumn =
+    _import "XML_GetCurrentColumnNumber" public: Pt.t ->int;
+
+  val p = getPointer x
+  val errorCode = cGetErrorCode p
+  val error = ExpatErrors.errorFromCode errorCode
+  val str = fetchCString (cErrorString errorCode)
+  val line = cGetLine p
+  val col = cGetColumn p
+
+in
+  Error (error, str, line, col)
+end
+
+(* -------------------------------------------------------------------------- *)
 fun parse (x, handlers) str isFinal =
 let
 
@@ -192,7 +219,7 @@ let
   val res = cParse (p, str, String.size str, isFinal)
 in
   if res = 0 then
-    raise DoNotPanic
+    raise (getError (x, handlers))
   else
     (x, handlers)
 end

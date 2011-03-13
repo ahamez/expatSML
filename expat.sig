@@ -27,6 +27,8 @@ signature EXPAT = sig
   *)
   val parse                   : parser -> string -> bool -> parser
 
+  (* Error type, error description, line, column *)
+  exception Error of ExpatErrors.error * string * int * int
   exception CannotReset
 
 end
