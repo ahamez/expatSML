@@ -5,6 +5,7 @@ in
   $(MLTON_ROOT)/basis/mlton.mlb 
   ./util.sml
   ./expat.sig
+  ./STLVector/STLVector.sml
   ./expat.sml
   ./test.sml
 end

@@ -19,13 +19,33 @@ exception CannotReset
 fun getPointer p = Fz.withValue (p, fn x => x)
 
 (* -------------------------------------------------------------------------- *)
+structure SimpleHandlerSTLElement : STLELEMENT = struct
+
+  type t = (string -> unit)
+  fun default x = ()
+
+end
+
+structure SHV = STLVectorFun (structure E = SimpleHandlerSTLElement)
+
+(* -------------------------------------------------------------------------- *)
+structure StartHandlerSTLElement : STLELEMENT = struct
+
+  type t = (string -> (string * string) list -> unit)
+  fun default x ys = ()
+
+end
+
+structure StHV = STLVectorFun (structure E = StartHandlerSTLElement)
+
+(* -------------------------------------------------------------------------- *)
 (* Global registry of all handlers for all parsers.
    Needed by callbacks called from the C side to dispatch on the correct
    function.
 *)
-val startHandlers          = ref []
-val endHandlers            = ref []
-val characterDataHandlers  = ref []
+val startHandlers          = StHV.STLVector NONE
+val endHandlers            = SHV.STLVector NONE
+val characterDataHandlers  = SHV.STLVector NONE
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -76,11 +96,7 @@ end
 
 (* -------------------------------------------------------------------------- *)
 fun registerHandler handlers handler =
-let
-  val _ = handlers := !handlers @ [handler]
-in
-  length (!handlers)
-end
+  SHV.size (SHV.pushBack handlers handler)
 
 (* -------------------------------------------------------------------------- *)
 fun callStartHandler (0, _, _) = ()
@@ -105,23 +121,24 @@ let
     end
 
   val attrs = loop [] cAttrs
+  val name  = fetchCString cName
 
 in
-  List.nth (!startHandlers, pos - 1) (fetchCString cName) attrs
+  StHV.at startHandlers (pos - 1) name attrs
 end
 
 (* -------------------------------------------------------------------------- *)
 fun callEndHandler (0, _) = ()
 |   callEndHandler (pos, data) =
-  List.nth (!endHandlers, pos - 1) (fetchCString data)
+  SHV.at endHandlers (pos - 1) (fetchCString data)
 
 (* -------------------------------------------------------------------------- *)
 fun callCharacterDataHandler (0, _, _) = ()
 |   callCharacterDataHandler (pos, data, len) =
-  List.nth (!characterDataHandlers, pos - 1) (fetchCStringWithSize data len)
+  SHV.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
 
 (* -------------------------------------------------------------------------- *)
-fun setElementHandlers (x, handlers) stardHandler endHandler =
+fun setElementHandlers (x, handlers) startHandler endHandler =
 let
 
   val cSetElementHandler  =
@@ -136,8 +153,8 @@ let
   val _ = cCallEndHandler callEndHandler
 
   val p = getPointer x
-  val startPos = registerHandler startHandlers stardHandler
-  val endPos   = registerHandler endHandlers endHandler
+  val startPos = StHV.size (StHV.pushBack startHandlers startHandler)
+  val endPos   = SHV.size  (SHV.pushBack endHandlers endHandler)
   val _ = Ar.update (handlers, 0, startPos)
   val _ = Ar.update (handlers, 1, endPos)
   val _ = cSetElementHandler p
@@ -157,7 +174,7 @@ let
   val _ = cCallCharacterDataHandler callCharacterDataHandler
 
   val p   = getPointer x
-  val pos = registerHandler characterDataHandlers handler
+  val pos = SHV.size (SHV.pushBack characterDataHandlers handler)
   val _   = Ar.update (handlers, 2, pos)
   val _   = cSetCharacterDataHandler p
 in
