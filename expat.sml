@@ -40,10 +40,6 @@ exception DoNotPanic
 fun getPointer p = Fz.withValue (p, fn x => x)
 
 (* -------------------------------------------------------------------------- *)
-val cSetUserData =
-  _import "XML_SetUserData" public: (Pt.t * int Ar.array) -> unit;
-
-(* -------------------------------------------------------------------------- *)
 (* Global registry of all handlers for all parsers.
    Needed by callbacks called from the C side to dispatch on the correct
    function.
@@ -55,8 +51,16 @@ val characterDataHandlers  = ref []
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
 let
-  val cCreate  = _import "XML_ParserCreate" public: Pt.t -> Pt.t;
-  val cFree    = _import "XML_ParserFree" public: Pt.t -> unit;
+
+  val cCreate  =
+    _import "XML_ParserCreate" public: Pt.t -> Pt.t;
+
+  val cFree    =
+    _import "XML_ParserFree" public: Pt.t -> unit;
+
+  val cSetUserData =
+    _import "XML_SetUserData" public: (Pt.t * int Ar.array) -> unit;
+
   val cRes     = cCreate Pt.null
   val res      = Fz.new cRes
   (* Will free the parser when no longer reachable in SML *)
@@ -150,19 +154,9 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-val cCallStartHandler =
-  _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
-val _ = cCallStartHandler callStartHandler
-
-(* -------------------------------------------------------------------------- *)
 fun callEndHandler (0, _) = ()
 |   callEndHandler (pos, data) =
   List.nth (!endHandlers, pos - 1) (fetchCString data)
-
-(* -------------------------------------------------------------------------- *)
-val cCallEndHandler =
-  _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
-val _ = cCallEndHandler callEndHandler
 
 (* -------------------------------------------------------------------------- *)
 fun callCharacterDataHandler (0, _, _) = ()
@@ -170,16 +164,19 @@ fun callCharacterDataHandler (0, _, _) = ()
   List.nth (!characterDataHandlers, pos - 1) (fetchCStringWithSize data len)
 
 (* -------------------------------------------------------------------------- *)
-val cCallCharacterDataHandler =
-  _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
-val _ = cCallCharacterDataHandler callCharacterDataHandler
-
-(* -------------------------------------------------------------------------- *)
 fun setElementHandlers (x, handlers) stardHandler endHandler =
 let
 
   val cSetElementHandler  =
     _import "C_SetElementHandler" public: Pt.t -> unit;
+
+  val cCallStartHandler =
+    _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
+  val _ = cCallStartHandler callStartHandler
+
+  val cCallEndHandler =
+    _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
+  val _ = cCallEndHandler callEndHandler
 
   val p = getPointer x
   val startPos = registerStartHandler stardHandler
@@ -197,6 +194,10 @@ let
 
   val cSetCharacterDataHandler  =
     _import "C_SetCharacterDataHandler" public: Pt.t -> unit;
+
+  val cCallCharacterDataHandler =
+    _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
+  val _ = cCallCharacterDataHandler callCharacterDataHandler
 
   val p   = getPointer x
   val pos = registerCharacterDataHandler handler
