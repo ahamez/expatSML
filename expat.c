@@ -15,8 +15,21 @@ dispatch_end_tag_handler(void* data, const char* el)
   SML_callEndHandler(pos, (void*)el);
 }
 
+static void
+dispatch_text_handler(void* data, const char* el, int len)
+{
+  const int pos = ((int*)data)[2];
+  SML_callTextHandler(pos, (void*)el, len);
+}
+
 void
 C_SetElementHandler(XML_Parser p)
 {
   XML_SetElementHandler(p, dispatch_start_tag_handler, dispatch_end_tag_handler);
+}
+
+void
+C_SetTextHandler(XML_Parser p)
+{
+  XML_SetCharacterDataHandler(p, dispatch_text_handler);
 }

@@ -4,14 +4,18 @@ signature EXPAT = sig
 
   type parser
 
-  val mkParser    : unit -> parser
-  val setHandlers : parser 
-                       (* start tag handler *)
-                    -> (string -> (string * string) list -> unit)
-                       (* end tag handler *)
-                    -> (string -> unit)
-                    -> unit
-  val parseString : parser -> string -> unit
+  val mkParser           : unit -> parser
+  val setElementHandlers : parser
+                           (* start tag handler *)
+                           -> (string -> (string * string) list -> unit)
+                           (* end tag handler *)
+                           -> (string -> unit)
+                           -> parser
+  val setTextHandler     : parser
+                           (* text handler *)
+                           -> (string -> unit)
+                           -> parser
+  val parseString        : parser -> string -> unit
 
   exception DoNotPanic
 
@@ -27,7 +31,7 @@ structure Fz = MLton.Finalizable
 structure Ar = Array
 
 (* -------------------------------------------------------------------------- *)
-type parser = Pt.t Fz.t
+type parser = Pt.t Fz.t * int Ar.array
 
 (* -------------------------------------------------------------------------- *)
 exception DoNotPanic
@@ -36,16 +40,8 @@ exception DoNotPanic
 fun getPointer p = Fz.withValue (p, fn x => x)
 
 (* -------------------------------------------------------------------------- *)
-fun mkParser () =
-let
-  val cCreate = _import "XML_ParserCreate" public: Pt.t -> Pt.t;
-  val cFree   = _import "XML_ParserFree" public: Pt.t -> unit;
-  val cRes    = cCreate Pt.null
-  val res     = Fz.new cRes
-  val _       = Fz.addFinalizer (res, fn x => cFree x)
-in
-  res
-end
+val cSetUserData =
+  _import "XML_SetUserData" public: (Pt.t * int Ar.array) -> unit;
 
 (* -------------------------------------------------------------------------- *)
 (* Global registry of all handlers for all parsers.
@@ -54,6 +50,27 @@ end
 *)
 val startHandlers = ref []
 val endHandlers   = ref []
+val textHandlers  = ref []
+
+(* -------------------------------------------------------------------------- *)
+fun mkParser () =
+let
+  val cCreate  = _import "XML_ParserCreate" public: Pt.t -> Pt.t;
+  val cFree    = _import "XML_ParserFree" public: Pt.t -> unit;
+  val cRes     = cCreate Pt.null
+  val res      = Fz.new cRes
+  val _        = Fz.addFinalizer (res, fn x => cFree x)
+  (* pos 0 => startHandler
+     pos 1 => endHandler
+     pos 2 => textHandler
+
+    '0' content => no associated handler
+  *)
+  val handlers = Ar.array (3, 0)
+  val _        = cSetUserData (cRes, handlers)
+in
+  (res, handlers)
+end
 
 (* -------------------------------------------------------------------------- *)
 fun strlen p =
@@ -74,11 +91,17 @@ fun fetchCString p =
                       )
 
 (* -------------------------------------------------------------------------- *)
+fun fetchCStringWithSize p len =
+  CharVector.tabulate ( len
+                      , fn i => Byte.byteToChar (MLton.Pointer.getWord8 (p,i))
+                      )
+
+(* -------------------------------------------------------------------------- *)
 fun registerStartHandler handler =
 let
   val _ = startHandlers := !startHandlers @ [handler]
 in
-  length (!startHandlers) - 1
+  length (!startHandlers)
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -86,18 +109,32 @@ fun registerEndHandler handler =
 let
   val _ = endHandlers := !endHandlers @ [handler]
 in
-  length (!endHandlers) - 1
+  length (!endHandlers)
 end
 
 (* -------------------------------------------------------------------------- *)
-fun callStartHandler (pos, cName, cAttrs) =
+fun registerTextHandler handler =
+let
+  val _ = textHandlers := !textHandlers @ [handler]
+in
+  length (!textHandlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun callStartHandler (0, _, _) = ()
+|   callStartHandler (pos, cName, cAttrs) =
 let
 
   fun loop acc ptr =
-    if Pt.getWord8(ptr, 0) = 0w0 then
+    (* end of attributes *)
+    if Pt.getPointer(ptr, 0) = Pt.null then
       acc
     else
     let
+      (* Each attribute seen in a start (or empty) tag occupies 2 consecutive 
+         places in this vector: the attribute name followed by the attribute
+         value
+      *)
       val attr = fetchCString (Pt.getPointer (ptr, 0))
       val cont = fetchCString (Pt.getPointer (ptr, 1))
     in
@@ -108,41 +145,68 @@ let
   val attrs = loop [] cAttrs
 
 in
-  List.nth (!startHandlers, pos) (fetchCString cName) attrs
+  List.nth (!startHandlers, pos - 1) (fetchCString cName) attrs
 end
 
+(* -------------------------------------------------------------------------- *)
 val cCallStartHandler =
   _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
 val _ = cCallStartHandler callStartHandler
 
 (* -------------------------------------------------------------------------- *)
-fun callEndHandler (pos, data) =
-  List.nth (!endHandlers, pos) (fetchCString data)
+fun callEndHandler (0, _) = ()
+|   callEndHandler (pos, data) =
+  List.nth (!endHandlers, pos - 1) (fetchCString data)
 
+(* -------------------------------------------------------------------------- *)
 val cCallEndHandler =
   _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
 val _ = cCallEndHandler callEndHandler
 
 (* -------------------------------------------------------------------------- *)
-fun setHandlers x stardHandler endHandler =
+fun callTextHandler (0, _, _) = ()
+|   callTextHandler (pos, data, len) =
+  List.nth (!textHandlers, pos - 1) (fetchCStringWithSize data len)
+
+(* -------------------------------------------------------------------------- *)
+val cCallTextHandler =
+  _export "SML_callTextHandler" : (int * Pt.t * int -> unit) -> unit;
+val _ = cCallTextHandler callTextHandler
+
+(* -------------------------------------------------------------------------- *)
+fun setElementHandlers (x, handlers) stardHandler endHandler =
 let
 
   val cSetElementHandler  =
     _import "C_SetElementHandler" public: Pt.t -> unit;
-  val cSetUserData =
-    _import "XML_SetUserData" public: (Pt.t * int Ar.array) -> unit;
 
   val p = getPointer x
   val startPos = registerStartHandler stardHandler
   val endPos   = registerEndHandler endHandler
-  val arr = Ar.fromList [startPos,endPos]
-  val _ = cSetUserData (p, arr)
+  val _ = Ar.update (handlers, 0, startPos)
+  val _ = Ar.update (handlers, 1, endPos)
+  val _ = cSetElementHandler p
 in
-  cSetElementHandler p
+  (x, handlers)
 end
 
 (* -------------------------------------------------------------------------- *)
-fun parseString x str =
+fun setTextHandler (x, handlers) handler =
+let
+
+  val cSetTextHandler  =
+    _import "C_SetTextHandler" public: Pt.t -> unit;
+
+  val p   = getPointer x
+  val pos = registerTextHandler handler
+  val _   = Ar.update (handlers, 2, pos)
+  val _   = cSetTextHandler p
+in
+  (x, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun parseString (x, _) str =
 let
 
   val cParse =
