@@ -14,15 +14,13 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun fetchCString p =
-  CharVector.tabulate ( strlen p
-                      , fn i => Byte.byteToChar (MLton.Pointer.getWord8 (p,i))
-                      )
-
-(* -------------------------------------------------------------------------- *)
 fun fetchCStringWithSize p len =
   CharVector.tabulate ( len
                       , fn i => Byte.byteToChar (MLton.Pointer.getWord8 (p,i))
                       )
+
+(* -------------------------------------------------------------------------- *)
+fun fetchCString p =
+  fetchCStringWithSize p (strlen p)
 
 end
