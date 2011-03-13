@@ -62,11 +62,13 @@ let
 
   val cRes     = cCreate Pt.null
   val res      = Fz.new cRes
-  (* Will free the parser when no longer reachable in SML *)
+  (* Will free the parser when res is no longer reachable in SML *)
   val _        = Fz.addFinalizer (res, fn x => cFree x)
-  (* pos 0 => startHandler
-     pos 1 => endHandler
-     pos 2 => textHandler
+
+  (* 3 entries:
+      - pos 0 => startHandler
+      - pos 1 => endHandler
+      - pos 2 => textHandler
 
     '0' content => no associated handler
   *)
