@@ -4,18 +4,18 @@ signature EXPAT = sig
 
   type parser
 
-  val mkParser           : unit -> parser
-  val setElementHandlers : parser
-                           (* start tag handler *)
-                           -> (string -> (string * string) list -> unit)
-                           (* end tag handler *)
-                           -> (string -> unit)
-                           -> parser
-  val setTextHandler     : parser
-                           (* text handler *)
-                           -> (string -> unit)
-                           -> parser
-  val parseString        : parser -> string -> unit
+  val mkParser                : unit -> parser
+  val setElementHandlers      : parser
+                                (* start tag handler *)
+                                -> (string -> (string * string) list -> unit)
+                                (* end tag handler *)
+                                -> (string -> unit)
+                                -> parser
+  val setCharacterDataHandler : parser
+                                (* text handler *)
+                                -> (string -> unit)
+                                -> parser
+  val parseString             : parser -> string -> unit
 
   exception DoNotPanic
 
@@ -48,9 +48,9 @@ val cSetUserData =
    Needed by callbacks called from the C side to dispatch on the correct
    function.
 *)
-val startHandlers = ref []
-val endHandlers   = ref []
-val textHandlers  = ref []
+val startHandlers          = ref []
+val endHandlers            = ref []
+val characterDataHandlers  = ref []
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -113,11 +113,11 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun registerTextHandler handler =
+fun registerCharacterDataHandler handler =
 let
-  val _ = textHandlers := !textHandlers @ [handler]
+  val _ = characterDataHandlers := !characterDataHandlers @ [handler]
 in
-  length (!textHandlers)
+  length (!characterDataHandlers)
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -164,14 +164,14 @@ val cCallEndHandler =
 val _ = cCallEndHandler callEndHandler
 
 (* -------------------------------------------------------------------------- *)
-fun callTextHandler (0, _, _) = ()
-|   callTextHandler (pos, data, len) =
-  List.nth (!textHandlers, pos - 1) (fetchCStringWithSize data len)
+fun callCharacterDataHandler (0, _, _) = ()
+|   callCharacterDataHandler (pos, data, len) =
+  List.nth (!characterDataHandlers, pos - 1) (fetchCStringWithSize data len)
 
 (* -------------------------------------------------------------------------- *)
-val cCallTextHandler =
-  _export "SML_callTextHandler" : (int * Pt.t * int -> unit) -> unit;
-val _ = cCallTextHandler callTextHandler
+val cCallCharacterDataHandler =
+  _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
+val _ = cCallCharacterDataHandler callCharacterDataHandler
 
 (* -------------------------------------------------------------------------- *)
 fun setElementHandlers (x, handlers) stardHandler endHandler =
@@ -191,16 +191,16 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun setTextHandler (x, handlers) handler =
+fun setCharacterDataHandler (x, handlers) handler =
 let
 
-  val cSetTextHandler  =
-    _import "C_SetTextHandler" public: Pt.t -> unit;
+  val cSetCharacterDataHandler  =
+    _import "C_SetCharacterDataHandler" public: Pt.t -> unit;
 
   val p   = getPointer x
-  val pos = registerTextHandler handler
+  val pos = registerCharacterDataHandler handler
   val _   = Ar.update (handlers, 2, pos)
-  val _   = cSetTextHandler p
+  val _   = cSetCharacterDataHandler p
 in
   (x, handlers)
 end

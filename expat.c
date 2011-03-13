@@ -16,11 +16,13 @@ dispatch_end_tag_handler(void* data, const char* el)
 }
 
 static void
-dispatch_text_handler(void* data, const char* el, int len)
+dispatch_character_data_handler(void* data, const char* el, int len)
 {
   const int pos = ((int*)data)[2];
-  SML_callTextHandler(pos, (void*)el, len);
+  SML_callCharacterDataHandler(pos, (void*)el, len);
 }
+
+// All C_* functions are imported by the SML side
 
 void
 C_SetElementHandler(XML_Parser p)
@@ -29,7 +31,7 @@ C_SetElementHandler(XML_Parser p)
 }
 
 void
-C_SetTextHandler(XML_Parser p)
+C_SetCharacterDataHandler(XML_Parser p)
 {
-  XML_SetCharacterDataHandler(p, dispatch_text_handler);
+  XML_SetCharacterDataHandler(p, dispatch_character_data_handler);
 }
