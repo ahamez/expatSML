@@ -1,5 +1,4 @@
 (* -------------------------------------------------------------------------- *)
-(* -------------------------------------------------------------------------- *)
 signature EXPAT = sig
 
   type parser
@@ -21,7 +20,6 @@ signature EXPAT = sig
 
 end
 
-(* -------------------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
 structure Expat : EXPAT = struct
 
@@ -79,27 +77,11 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun registerStartHandler handler =
+fun registerHandler handlers handler =
 let
-  val _ = startHandlers := !startHandlers @ [handler]
+  val _ = handlers := !handlers @ [handler]
 in
-  length (!startHandlers)
-end
-
-(* -------------------------------------------------------------------------- *)
-fun registerEndHandler handler =
-let
-  val _ = endHandlers := !endHandlers @ [handler]
-in
-  length (!endHandlers)
-end
-
-(* -------------------------------------------------------------------------- *)
-fun registerCharacterDataHandler handler =
-let
-  val _ = characterDataHandlers := !characterDataHandlers @ [handler]
-in
-  length (!characterDataHandlers)
+  length (!handlers)
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -156,8 +138,8 @@ let
   val _ = cCallEndHandler callEndHandler
 
   val p = getPointer x
-  val startPos = registerStartHandler stardHandler
-  val endPos   = registerEndHandler endHandler
+  val startPos = registerHandler startHandlers stardHandler
+  val endPos   = registerHandler endHandlers endHandler
   val _ = Ar.update (handlers, 0, startPos)
   val _ = Ar.update (handlers, 1, endPos)
   val _ = cSetElementHandler p
@@ -177,7 +159,7 @@ let
   val _ = cCallCharacterDataHandler callCharacterDataHandler
 
   val p   = getPointer x
-  val pos = registerCharacterDataHandler handler
+  val pos = registerHandler characterDataHandlers handler
   val _   = Ar.update (handlers, 2, pos)
   val _   = cSetCharacterDataHandler p
 in
@@ -202,6 +184,3 @@ end
 
 (* -------------------------------------------------------------------------- *)
 end
-
-(* -------------------------------------------------------------------------- *)
-(* -------------------------------------------------------------------------- *)
