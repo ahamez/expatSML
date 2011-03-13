@@ -95,10 +95,6 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun registerHandler handlers handler =
-  SHV.size (SHV.pushBack handlers handler)
-
-(* -------------------------------------------------------------------------- *)
 fun callStartHandler (0, _, _) = ()
 |   callStartHandler (pos, cName, cAttrs) =
 let
