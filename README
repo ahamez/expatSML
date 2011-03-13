@@ -1,0 +1,29 @@
+Presentation
+============
+
+ExpatSML is a Standard ML wrapper for the expat library
+(http://www.libexpat.org), using MLton foreign intefaces (FFIs). As such, only
+this compiler is supported. It has been tested with the latest version available
+of expat: 2.0.1.
+
+Lacking features
+================
+
+Not all functions are available. An unavailable function falls in one of the
+following category:
+
+- We didn't have any interest in it. However, we can add it upon request
+  (provided it's not a function described in the following part).
+
+- Not all Standard ML data can pass between C and Standard ML with the MLton
+  FFis. For instance, 'XML_SetUserData' and its sibling 'XML_GetUserData' cannot
+  be exported. Thus, user data must be held in global variables.
+
+- C memory management functions. We obviously do not want to see those in
+  Standard ML.
+
+Using ExpatSML
+==============
+
+All available functions are described in the EXPAT signature. Their names match
+exactly those of the expat library, the 'XML_' prefix being stripped.
