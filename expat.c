@@ -1,5 +1,5 @@
 #include <expat.h>
-#include "export.h"
+#include "SMLExpat.h"
 
 static void
 dispatch_start_tag_handler(void* data, const char* el, const char** attr)
