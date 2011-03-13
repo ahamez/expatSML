@@ -182,19 +182,19 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun parseString (x, _) str =
+fun parse (x, handlers) str isFinal =
 let
 
   val cParse =
     _import "XML_Parse" public: (Pt.t * string * int * bool) -> int;
 
   val p = getPointer x
-  val res = cParse (p, str, String.size str, true)
+  val res = cParse (p, str, String.size str, isFinal)
 in
   if res = 0 then
     raise DoNotPanic
   else
-    ()
+    (x, handlers)
 end
 
 (* -------------------------------------------------------------------------- *)

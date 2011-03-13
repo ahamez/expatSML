@@ -18,7 +18,7 @@ signature EXPAT = sig
                                 -> (string -> unit)
                                 -> parser
 
-  val parseString             : parser -> string -> unit
+  val parse                   : parser -> string -> bool -> parser
 
   exception CannotReset
 
