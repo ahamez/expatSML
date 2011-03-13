@@ -29,6 +29,7 @@ structure Expat : EXPAT = struct
 structure Pt = MLton.Pointer
 structure Fz = MLton.Finalizable
 structure Ar = Array
+open ExpatUtil
 
 (* -------------------------------------------------------------------------- *)
 type parser = Pt.t Fz.t * int Ar.array
@@ -76,30 +77,6 @@ let
 in
   (res, handlers)
 end
-
-(* -------------------------------------------------------------------------- *)
-fun strlen p =
-let
-  fun loop i =
-    if 0w0 = MLton.Pointer.getWord8 (p, i) then
-      i
-    else
-      loop (i + 1)
-in
-  loop 0
-end
-
-(* -------------------------------------------------------------------------- *)
-fun fetchCString p =
-  CharVector.tabulate ( strlen p
-                      , fn i => Byte.byteToChar (MLton.Pointer.getWord8 (p,i))
-                      )
-
-(* -------------------------------------------------------------------------- *)
-fun fetchCStringWithSize p len =
-  CharVector.tabulate ( len
-                      , fn i => Byte.byteToChar (MLton.Pointer.getWord8 (p,i))
-                      )
 
 (* -------------------------------------------------------------------------- *)
 fun registerStartHandler handler =
