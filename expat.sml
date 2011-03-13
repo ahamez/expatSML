@@ -48,6 +48,10 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
+(* Global registry of all handlers for all parsers.
+   Needed by callbacks called from the C side to dispatch on the correct
+   function.
+*)
 val startHandlers = ref []
 val endHandlers   = ref []
 
