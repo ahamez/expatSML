@@ -155,7 +155,7 @@ let
     val name  = fetchCString cName
 
   in
-    HT2V.at startHandlers (pos - 1) name attrs
+    HT2V.at startHandlers (pos-1) name attrs
   end
 
   val cCallStartHandler =
@@ -190,7 +190,7 @@ let
 
   fun callEndHandler (0, _) = raise DoNotPanic
   |   callEndHandler (pos, data) =
-    HT1V.at endHandlers (pos - 1) (fetchCString data)
+    HT1V.at endHandlers (pos-1) (fetchCString data)
 
   val cCallEndHandler =
     _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
