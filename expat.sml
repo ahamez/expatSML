@@ -48,14 +48,17 @@ structure HT2V = STLVectorFun (structure E = HandlerType2STLElement)
    Needed by callbacks called from the C side to dispatch on the correct
    function.
 *)
-(* pos = 0*)
-val startHandlers          = HT2V.STLVector NONE
-(* pos = 1*)
-val endHandlers            = HT1V.STLVector NONE
-(* pos = 2*)
-val characterDataHandlers  = HT1V.STLVector NONE
-(* pos = 3*)
-val commentHandlers        = HT1V.STLVector NONE
+val startHandlerIndex         = 0
+val startHandlers             = HT2V.STLVector NONE
+
+val endHandlerIndex           = 1
+val endHandlers               = HT1V.STLVector NONE
+
+val characterDataHandlerIndex = 2
+val characterDataHandlers     = HT1V.STLVector NONE
+
+val commentHandlerIndex       = 3
+val commentHandlers           = HT1V.STLVector NONE
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -147,8 +150,7 @@ let
           | SOME h =>
           let
             val pos = HT2V.size (HT2V.pushBack startHandlers h)
-            (* 0 => start handlers *)
-            val _ = Ar.update (handlers, 0, pos)
+            val _ = Ar.update (handlers, startHandlerIndex, pos)
             val _ = cSetHandler p
           in
             ()
@@ -182,8 +184,7 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack endHandlers h)
-            (* 1 => end handlers *)
-            val _ = Ar.update (handlers, 1, pos)
+            val _ = Ar.update (handlers, endHandlerIndex, pos)
             val _ = cSetHandler p
           in
             ()
@@ -221,7 +222,7 @@ let
                                  | SOME x => x
   val p   = getPointer x
   val pos = HT1V.size (HT1V.pushBack characterDataHandlers handler)
-  val _   = Ar.update (handlers, 2, pos)
+  val _   = Ar.update (handlers, characterDataHandlerIndex, pos)
   val _   = cSetCharacterDataHandler p
 in
   (x, handlers)
@@ -251,8 +252,7 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack commentHandlers h)
-            (* 3 => comment handlers *)
-            val _ = Ar.update (handlers, 3, pos)
+            val _ = Ar.update (handlers, commentHandlerIndex, pos)
             val _ = cSetHandler p
           in
             ()
