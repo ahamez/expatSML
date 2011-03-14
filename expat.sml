@@ -24,24 +24,24 @@ exception CannotReset
 fun getPointer p = Fz.withValue (p, fn x => x)
 
 (* -------------------------------------------------------------------------- *)
-structure SimpleHandlerSTLElement : STLELEMENT = struct
+structure HandlerType1STLElement : STLELEMENT = struct
 
   type t = (string -> unit)
   fun default _ = ()
 
 end
 
-structure SHV = STLVectorFun (structure E = SimpleHandlerSTLElement)
+structure HT1V = STLVectorFun (structure E = HandlerType1STLElement)
 
 (* -------------------------------------------------------------------------- *)
-structure StartHandlerSTLElement : STLELEMENT = struct
+structure HandlerType2STLElement : STLELEMENT = struct
 
   type t = (string -> (string * string) list -> unit)
   fun default _ _ = ()
 
 end
 
-structure StHV = STLVectorFun (structure E = StartHandlerSTLElement)
+structure HT2V = STLVectorFun (structure E = HandlerType2STLElement)
 
 (* -------------------------------------------------------------------------- *)
 (* Global registry of all handlers for all parsers.
@@ -49,13 +49,13 @@ structure StHV = STLVectorFun (structure E = StartHandlerSTLElement)
    function.
 *)
 (* pos = 0*)
-val startHandlers          = StHV.STLVector NONE
+val startHandlers          = HT2V.STLVector NONE
 (* pos = 1*)
-val endHandlers            = SHV.STLVector NONE
+val endHandlers            = HT1V.STLVector NONE
 (* pos = 2*)
-val characterDataHandlers  = SHV.STLVector NONE
+val characterDataHandlers  = HT1V.STLVector NONE
 (* pos = 3*)
-val commentHandlers        = SHV.STLVector NONE
+val commentHandlers        = HT1V.STLVector NONE
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -133,7 +133,7 @@ let
     val name  = fetchCString cName
 
   in
-    StHV.at startHandlers (pos - 1) name attrs
+    HT2V.at startHandlers (pos - 1) name attrs
   end
 
   val cCallStartHandler =
@@ -146,7 +146,7 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = StHV.size (StHV.pushBack startHandlers h)
+            val pos = HT2V.size (HT2V.pushBack startHandlers h)
             (* 0 => start handlers *)
             val _ = Ar.update (handlers, 0, pos)
             val _ = cSetHandler p
@@ -169,7 +169,7 @@ let
 
   fun callEndHandler (0, _) = raise DoNotPanic
   |   callEndHandler (pos, data) =
-    SHV.at endHandlers (pos - 1) (fetchCString data)
+    HT1V.at endHandlers (pos - 1) (fetchCString data)
 
   val cCallEndHandler =
     _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
@@ -181,7 +181,7 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = SHV.size (SHV.pushBack endHandlers h)
+            val pos = HT1V.size (HT1V.pushBack endHandlers h)
             (* 1 => end handlers *)
             val _ = Ar.update (handlers, 1, pos)
             val _ = cSetHandler p
@@ -208,7 +208,7 @@ let
 
   fun callCharacterDataHandler (0, _, _) = ()
   |   callCharacterDataHandler (pos, data, len) =
-    SHV.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
+    HT1V.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
 
   val cSetCharacterDataHandler  =
     _import "C_SetCharacterDataHandler" public: Pt.t -> unit;
@@ -220,7 +220,7 @@ let
   val handler = case handlerOpt of NONE   => (fn _ => ())
                                  | SOME x => x
   val p   = getPointer x
-  val pos = SHV.size (SHV.pushBack characterDataHandlers handler)
+  val pos = HT1V.size (HT1V.pushBack characterDataHandlers handler)
   val _   = Ar.update (handlers, 2, pos)
   val _   = cSetCharacterDataHandler p
 in
@@ -239,7 +239,7 @@ let
 
   fun callbackHandler (0, _) = raise DoNotPanic
   |   callbackHandler (pos, data) =
-    SHV.at commentHandlers (pos-1) (fetchCString data)
+    HT1V.at commentHandlers (pos-1) (fetchCString data)
 
   val cCall =
     _export "SML_callCommentHandler" : (int * Pt.t -> unit) -> unit;
@@ -250,7 +250,7 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = SHV.size (SHV.pushBack commentHandlers h)
+            val pos = HT1V.size (HT1V.pushBack commentHandlers h)
             (* 3 => comment handlers *)
             val _ = Ar.update (handlers, 3, pos)
             val _ = cSetHandler p
