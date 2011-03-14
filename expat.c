@@ -25,6 +25,28 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// val maxParsers in expat.sml
+#define MAX_PARSERS  64
+// val maxHandlers in expat.sml
+#define MAX_HANDLERS 64
+
+// Initialization handled by the SML side
+int handlers[MAX_PARSERS][MAX_HANDLERS];
+
+void
+C_setParserHandlerCallback(int parser, int handlerKind, int handler)
+{
+  handlers[parser][handlerKind] = handler;
+}
+
+int*
+C_getParserHandlersPtr(int parser)
+{
+  return handlers[parser];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static void
 callbackStartTagHandler(void* data, const char* el, const char** attr)
 {
