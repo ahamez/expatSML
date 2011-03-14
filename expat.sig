@@ -13,8 +13,18 @@ signature EXPAT = sig
   (* Reset the parser: it removes all associated handlers *)
   val parserReset             : parser -> parser
 
-  (* Provide a parser handlers for start and end tags *)
-  val setElementHandlers      : parser
+  (* Set parser handlers for start tags *)
+  val setStartElementHandler  : parser
+                                -> startTagHandler option
+                                -> parser
+
+  (* Set parser handlers for start tags *)
+  val setEndElementHandler    : parser
+                                -> endTagHandler option
+                                -> parser
+
+  (* Set parser handlers for both start and end tags *)
+  val setElementHandler       : parser
                                 (* start tag handler *)
                                 -> startTagHandler option
                                 (* end tag handler *)

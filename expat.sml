@@ -137,34 +137,75 @@ fun callCharacterDataHandler (0, _, _) = ()
   SHV.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
 
 (* -------------------------------------------------------------------------- *)
-fun setElementHandlers (x, handlers) startHandlerOpt endHandlerOpt =
+fun setStartElementHandler (x, handlers) handlerOpt =
 let
 
-  val cSetElementHandler  =
-    _import "C_SetElementHandler" public: Pt.t -> unit;
+  val cSetHandler =
+    _import "C_SetStartElementHandler" public: Pt.t -> unit;
+
+  val cUnsetHandler =
+    _import "C_UnsetStartElementHandler" public: Pt.t -> unit;
 
   val cCallStartHandler =
     _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
   val _ = cCallStartHandler callStartHandler
 
+  val p = getPointer x
+
+  val _ = case handlerOpt of
+            NONE   => cUnsetHandler p
+          | SOME h =>
+          let
+            val pos = StHV.size (StHV.pushBack startHandlers h)
+            (* 0 => start handlers *)
+            val _ = Ar.update (handlers, 0, pos)
+            val _ = cSetHandler p
+          in
+            ()
+          end
+in
+  (x, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun setEndElementHandler (x, handlers) handlerOpt =
+let
+
+  val cSetHandler =
+    _import "C_SetEndElementHandler" public: Pt.t -> unit;
+
+  val cUnsetHandler =
+    _import "C_UnsetEndElementHandler" public: Pt.t -> unit;
+
   val cCallEndHandler =
     _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
   val _ = cCallEndHandler callEndHandler
 
-  val startHandler = case startHandlerOpt of NONE   => (fn _ => fn _ => ())
-                                           | SOME x => x
-
-  val endHandler = case endHandlerOpt of NONE   => (fn _ => ())
-                                       | SOME x => x
-
   val p = getPointer x
-  val startPos = StHV.size (StHV.pushBack startHandlers startHandler)
-  val endPos   = SHV.size  (SHV.pushBack endHandlers endHandler)
-  val _ = Ar.update (handlers, 0, startPos)
-  val _ = Ar.update (handlers, 1, endPos)
-  val _ = cSetElementHandler p
+
+  val _ = case handlerOpt of
+            NONE   => cUnsetHandler p
+          | SOME h =>
+          let
+            val pos = SHV.size (SHV.pushBack endHandlers h)
+            (* 1 => end handlers *)
+            val _ = Ar.update (handlers, 1, pos)
+            val _ = cSetHandler p
+          in
+            ()
+          end
+
 in
   (x, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun setElementHandler x startHandlerOpt endHandlerOpt =
+let
+  val _ = setStartElementHandler x startHandlerOpt
+  val _ = setEndElementHandler x endHandlerOpt
+in
+  x
 end
 
 (* -------------------------------------------------------------------------- *)
