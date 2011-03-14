@@ -99,40 +99,6 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
-fun callStartHandler (0, _, _) = ()
-|   callStartHandler (pos, cName, cAttrs) =
-let
-
-  fun loop acc ptr =
-    (* end of attributes *)
-    if Pt.getPointer(ptr, 0) = Pt.null then
-      acc
-    else
-    let
-      (* Each attribute seen in a start (or empty) tag occupies 2 consecutive 
-         places in this vector: the attribute name followed by the attribute
-         value
-      *)
-      val attr = fetchCString (Pt.getPointer (ptr, 0))
-      val cont = fetchCString (Pt.getPointer (ptr, 1))
-    in
-      loop ((attr,cont)::acc)
-           (Pt.add (ptr, Pt.sizeofPointer * (Word.fromInt 2)))
-    end
-
-  val attrs = loop [] cAttrs
-  val name  = fetchCString cName
-
-in
-  StHV.at startHandlers (pos - 1) name attrs
-end
-
-(* -------------------------------------------------------------------------- *)
-fun callEndHandler (0, _) = ()
-|   callEndHandler (pos, data) =
-  SHV.at endHandlers (pos - 1) (fetchCString data)
-
-(* -------------------------------------------------------------------------- *)
 fun setStartElementHandler (x, handlers) handlerOpt =
 let
 
@@ -141,6 +107,34 @@ let
 
   val cUnsetHandler =
     _import "C_UnsetStartElementHandler" public: Pt.t -> unit;
+
+  fun callStartHandler (0, _, _) = raise DoNotPanic
+  |   callStartHandler (pos, cName, cAttrs) =
+  let
+
+    fun loop acc ptr =
+      (* end of attributes *)
+      if Pt.getPointer(ptr, 0) = Pt.null then
+        acc
+      else
+      let
+        (* Each attribute seen in a start (or empty) tag occupies 2 consecutive 
+           places in this vector: the attribute name followed by the attribute
+           value
+        *)
+        val attr = fetchCString (Pt.getPointer (ptr, 0))
+        val cont = fetchCString (Pt.getPointer (ptr, 1))
+      in
+        loop ((attr,cont)::acc)
+             (Pt.add (ptr, Pt.sizeofPointer * (Word.fromInt 2)))
+      end
+
+    val attrs = loop [] cAttrs
+    val name  = fetchCString cName
+
+  in
+    StHV.at startHandlers (pos - 1) name attrs
+  end
 
   val cCallStartHandler =
     _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
@@ -172,6 +166,10 @@ let
 
   val cUnsetHandler =
     _import "C_UnsetEndElementHandler" public: Pt.t -> unit;
+
+  fun callEndHandler (0, _) = raise DoNotPanic
+  |   callEndHandler (pos, data) =
+    SHV.at endHandlers (pos - 1) (fetchCString data)
 
   val cCallEndHandler =
     _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
