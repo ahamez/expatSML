@@ -8,5 +8,4 @@ in
   ./expat.sig
   ./STLVector/STLVector.sml
   ./expat.sml
-  ./test.sml
 end
