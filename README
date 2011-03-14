@@ -22,6 +22,9 @@ following category:
 - C memory management functions. We obviously do not want to see those in
   Standard ML.
 
+Also, there is actually no Unicode support in the way that you can parse files
+which are encoded with UTF-8, provided they contain only ASCII characters.
+
 Using ExpatSML
 ==============
 
