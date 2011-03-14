@@ -17,7 +17,6 @@ type startCdataHandler    = unit -> unit
 type endCdataHandler      = unit -> unit
 
 (* -------------------------------------------------------------------------- *)
-exception DoNotPanic
 exception Error of ExpatErrors.error * string * int * int
 exception CannotReset
 
