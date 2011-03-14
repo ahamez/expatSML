@@ -98,7 +98,7 @@ let
   val _        = Fz.addFinalizer (res, fn x => cFree x)
 
   (* '0' content => no associated handler *)
-  val handlers = Ar.array (64, 0)
+  val handlers = Ar.array (64, ~1)
   val _        = cSetUserData (cRes, handlers)
 in
   (res, handlers)
@@ -130,8 +130,7 @@ let
   val cUnsetHandler =
     _import "C_UnsetStartElementHandler" public: Pt.t -> unit;
 
-  fun callStartHandler (0, _, _) = raise DoNotPanic
-  |   callStartHandler (pos, cName, cAttrs) =
+  fun callStartHandler (pos, cName, cAttrs) =
   let
 
     fun loop acc ptr =
@@ -155,7 +154,7 @@ let
     val name  = fetchCString cName
 
   in
-    HT2V.at startHandlers (pos-1) name attrs
+    HT2V.at startHandlers pos name attrs
   end
 
   val cCallStartHandler =
@@ -169,7 +168,7 @@ let
           | SOME h =>
           let
             val pos = HT2V.size (HT2V.pushBack startHandlers h)
-            val _ = Ar.update (handlers, startHandlerIndex, pos)
+            val _ = Ar.update (handlers, startHandlerIndex, pos-1)
             val _ = cSetHandler p
           in
             ()
@@ -188,9 +187,8 @@ let
   val cUnsetHandler =
     _import "C_UnsetEndElementHandler" public: Pt.t -> unit;
 
-  fun callEndHandler (0, _) = raise DoNotPanic
-  |   callEndHandler (pos, data) =
-    HT1V.at endHandlers (pos-1) (fetchCString data)
+  fun callEndHandler (pos, data) =
+    HT1V.at endHandlers pos (fetchCString data)
 
   val cCallEndHandler =
     _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
@@ -203,7 +201,7 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack endHandlers h)
-            val _ = Ar.update (handlers, endHandlerIndex, pos)
+            val _ = Ar.update (handlers, endHandlerIndex, pos-1)
             val _ = cSetHandler p
           in
             ()
@@ -232,9 +230,8 @@ let
   val cUnsetHandler =
     _import "C_UnsetCharacterDataHandler" public: Pt.t -> unit;
 
-  fun callbackHandler (0, _, _) = raise DoNotPanic
-  |   callbackHandler (pos, data, len) =
-    HT1V.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
+  fun callbackHandler (pos, data, len) =
+    HT1V.at characterDataHandlers pos (fetchCStringWithSize data len)
 
   val cCall =
     _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
@@ -246,7 +243,7 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack characterDataHandlers h)
-            val _ = Ar.update (handlers, characterDataHandlerIndex, pos)
+            val _ = Ar.update (handlers, characterDataHandlerIndex, pos-1)
             val _ = cSetHandler p
           in
             ()
@@ -266,9 +263,8 @@ let
   val cUnsetHandler =
     _import "C_UnsetCommentHandler" public: Pt.t -> unit;
 
-  fun callbackHandler (0, _) = raise DoNotPanic
-  |   callbackHandler (pos, data) =
-    HT1V.at commentHandlers (pos-1) (fetchCString data)
+  fun callbackHandler (pos, data) =
+    HT1V.at commentHandlers pos (fetchCString data)
 
   val cCall =
     _export "SML_callCommentHandler" : (int * Pt.t -> unit) -> unit;
@@ -280,7 +276,7 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack commentHandlers h)
-            val _ = Ar.update (handlers, commentHandlerIndex, pos)
+            val _ = Ar.update (handlers, commentHandlerIndex, pos-1)
             val _ = cSetHandler p
           in
             ()
@@ -299,9 +295,8 @@ let
   val cUnsetHandler =
     _import "C_UnsetStartCdataHandler" public: Pt.t -> unit;
 
-  fun callbackHandler 0   = raise DoNotPanic
-  |   callbackHandler pos =
-    HT0V.at startCdataHandlers (pos-1) ()
+  fun callbackHandler pos =
+    HT0V.at startCdataHandlers pos ()
 
   val cCall =
     _export "SML_callStartCdataHandler" : (int -> unit) -> unit;
@@ -313,7 +308,7 @@ let
           | SOME h =>
           let
             val pos = HT0V.size (HT0V.pushBack startCdataHandlers h)
-            val _ = Ar.update (handlers, startCdataHandlerIndex, pos)
+            val _ = Ar.update (handlers, startCdataHandlerIndex, pos-1)
             val _ = cSetHandler p
           in
             ()
@@ -332,9 +327,8 @@ let
   val cUnsetHandler =
     _import "C_UnsetEndCdataHandler" public: Pt.t -> unit;
 
-  fun callbackHandler 0   = raise DoNotPanic
-  |   callbackHandler pos =
-    HT0V.at endCdataHandlers (pos-1) ()
+  fun callbackHandler pos =
+    HT0V.at endCdataHandlers pos ()
 
   val cCall =
     _export "SML_callEndCdataHandler" : (int -> unit) -> unit;
@@ -346,7 +340,7 @@ let
           | SOME h =>
           let
             val pos = HT0V.size (HT0V.pushBack endCdataHandlers h)
-            val _ = Ar.update (handlers, endCdataHandlerIndex, pos)
+            val _ = Ar.update (handlers, endCdataHandlerIndex, pos-1)
             val _ = cSetHandler p
           in
             ()
