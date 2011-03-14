@@ -6,6 +6,7 @@ signature EXPAT = sig
   type startTagHandler      = string -> (string * string) list -> unit
   type endTagHandler        = string -> unit
   type characterDataHandler = string -> unit
+  type commentHandler       = string -> unit
 
   (* Create a new parser *)
   val mkParser                : unit -> parser
@@ -13,12 +14,12 @@ signature EXPAT = sig
   (* Reset the parser: it removes all associated handlers *)
   val parserReset             : parser -> parser
 
-  (* Set parser handlers for start tags *)
+  (* Set parser handler for start tags *)
   val setStartElementHandler  : parser
                                 -> startTagHandler option
                                 -> parser
 
-  (* Set parser handlers for start tags *)
+  (* Set parser handler for start tags *)
   val setEndElementHandler    : parser
                                 -> endTagHandler option
                                 -> parser
@@ -31,10 +32,14 @@ signature EXPAT = sig
                                 -> endTagHandler option
                                 -> parser
 
-  (* Provide a parser an handler for text *)
+  (* Set parser handler for character data *)
   val setCharacterDataHandler : parser
-                                (* text handler *)
                                 -> characterDataHandler option
+                                -> parser
+
+  (* Set parser handler for comments *)
+  val setCommentHandler       : parser
+                                -> commentHandler option
                                 -> parser
 
   (* Launch parse. Second parameter tells if it's the last string to be

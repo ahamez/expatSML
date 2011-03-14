@@ -12,8 +12,10 @@ type parser = Pt.t Fz.t * int Ar.array
 type startTagHandler      = string -> (string * string) list -> unit
 type endTagHandler        = string -> unit
 type characterDataHandler = string -> unit
+type commentHandler       = string -> unit
 
 (* -------------------------------------------------------------------------- *)
+exception DoNotPanic
 exception Error of ExpatErrors.error * string * int * int
 exception CannotReset
 
@@ -46,9 +48,14 @@ structure StHV = STLVectorFun (structure E = StartHandlerSTLElement)
    Needed by callbacks called from the C side to dispatch on the correct
    function.
 *)
+(* pos = 0*)
 val startHandlers          = StHV.STLVector NONE
+(* pos = 1*)
 val endHandlers            = SHV.STLVector NONE
+(* pos = 2*)
 val characterDataHandlers  = SHV.STLVector NONE
+(* pos = 3*)
+val commentHandlers        = SHV.STLVector NONE
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -68,14 +75,8 @@ let
   (* Will free the parser when res is no longer reachable in SML *)
   val _        = Fz.addFinalizer (res, fn x => cFree x)
 
-  (* 3 entries:
-      - pos 0 => startHandler
-      - pos 1 => endHandler
-      - pos 2 => textHandler
-
-    '0' content => no associated handler
-  *)
-  val handlers = Ar.array (3, 0)
+  (* '0' content => no associated handler *)
+  val handlers = Ar.array (64, 0)
   val _        = cSetUserData (cRes, handlers)
 in
   (res, handlers)
@@ -130,11 +131,6 @@ end
 fun callEndHandler (0, _) = ()
 |   callEndHandler (pos, data) =
   SHV.at endHandlers (pos - 1) (fetchCString data)
-
-(* -------------------------------------------------------------------------- *)
-fun callCharacterDataHandler (0, _, _) = ()
-|   callCharacterDataHandler (pos, data, len) =
-  SHV.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
 
 (* -------------------------------------------------------------------------- *)
 fun setStartElementHandler (x, handlers) handlerOpt =
@@ -212,6 +208,10 @@ end
 fun setCharacterDataHandler (x, handlers) handlerOpt =
 let
 
+  fun callCharacterDataHandler (0, _, _) = ()
+  |   callCharacterDataHandler (pos, data, len) =
+    SHV.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
+
   val cSetCharacterDataHandler  =
     _import "C_SetCharacterDataHandler" public: Pt.t -> unit;
 
@@ -225,6 +225,40 @@ let
   val pos = SHV.size (SHV.pushBack characterDataHandlers handler)
   val _   = Ar.update (handlers, 2, pos)
   val _   = cSetCharacterDataHandler p
+in
+  (x, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun setCommentHandler (x, handlers) handlerOpt =
+let
+
+  val cSetHandler  =
+    _import "C_SetCommentHandler" public: Pt.t -> unit;
+
+  val cUnsetHandler =
+    _import "C_UnsetCommentHandler" public: Pt.t -> unit;
+
+  fun callbackHandler (0, _) = raise DoNotPanic
+  |   callbackHandler (pos, data) =
+    SHV.at commentHandlers (pos-1) (fetchCString data)
+
+  val cCall =
+    _export "SML_callCommentHandler" : (int * Pt.t -> unit) -> unit;
+  val _ = cCall callbackHandler
+
+  val p   = getPointer x
+  val _ = case handlerOpt of
+            NONE   => cUnsetHandler p
+          | SOME h =>
+          let
+            val pos = SHV.size (SHV.pushBack commentHandlers h)
+            (* 3 => comment handlers *)
+            val _ = Ar.update (handlers, 3, pos)
+            val _ = cSetHandler p
+          in
+            ()
+          end
 in
   (x, handlers)
 end
