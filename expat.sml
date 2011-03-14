@@ -27,7 +27,7 @@ fun getPointer p = Fz.withValue (p, fn x => x)
 structure SimpleHandlerSTLElement : STLELEMENT = struct
 
   type t = (string -> unit)
-  fun default x = ()
+  fun default _ = ()
 
 end
 
@@ -37,7 +37,7 @@ structure SHV = STLVectorFun (structure E = SimpleHandlerSTLElement)
 structure StartHandlerSTLElement : STLELEMENT = struct
 
   type t = (string -> (string * string) list -> unit)
-  fun default x ys = ()
+  fun default _ _ = ()
 
 end
 
