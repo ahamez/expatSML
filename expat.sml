@@ -9,9 +9,9 @@ open ExpatUtil
 
 (* -------------------------------------------------------------------------- *)
 type parser = Pt.t Fz.t * int Ar.array
-type startTagHandler      = (string -> (string * string) list -> unit)
-type endTagHandler        = (string -> unit)
-type characterDataHandler = (string -> unit)
+type startTagHandler      = string -> (string * string) list -> unit
+type endTagHandler        = string -> unit
+type characterDataHandler = string -> unit
 
 (* -------------------------------------------------------------------------- *)
 exception Error of ExpatErrors.error * string * int * int

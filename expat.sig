@@ -3,9 +3,9 @@ signature EXPAT = sig
   type parser
 
   (* Handlers types *)
-  type startTagHandler      = (string -> (string * string) list -> unit)
-  type endTagHandler        = (string -> unit)
-  type characterDataHandler = (string -> unit)
+  type startTagHandler      = string -> (string * string) list -> unit
+  type endTagHandler        = string -> unit
+  type characterDataHandler = string -> unit
 
   (* Create a new parser *)
   val mkParser                : unit -> parser
