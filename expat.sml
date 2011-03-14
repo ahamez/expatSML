@@ -207,23 +207,32 @@ end
 fun setCharacterDataHandler (x, handlers) handlerOpt =
 let
 
-  fun callCharacterDataHandler (0, _, _) = ()
-  |   callCharacterDataHandler (pos, data, len) =
-    HT1V.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
-
-  val cSetCharacterDataHandler  =
+  val cSetHandler  =
     _import "C_SetCharacterDataHandler" public: Pt.t -> unit;
 
-  val cCallCharacterDataHandler =
-    _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
-  val _ = cCallCharacterDataHandler callCharacterDataHandler
+  val cUnsetHandler =
+    _import "C_UnsetCharacterDataHandler" public: Pt.t -> unit;
 
-  val handler = case handlerOpt of NONE   => (fn _ => ())
-                                 | SOME x => x
+  fun callbackHandler (0, _, _) = raise DoNotPanic
+  |   callbackHandler (pos, data, len) =
+    HT1V.at characterDataHandlers (pos -1 ) (fetchCStringWithSize data len)
+
+  val cCall =
+    _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
+  val _ = cCall callbackHandler
+
   val p   = getPointer x
-  val pos = HT1V.size (HT1V.pushBack characterDataHandlers handler)
-  val _   = Ar.update (handlers, characterDataHandlerIndex, pos)
-  val _   = cSetCharacterDataHandler p
+  val _ = case handlerOpt of
+            NONE   => cUnsetHandler p
+          | SOME h =>
+          let
+            val pos = HT1V.size (HT1V.pushBack characterDataHandlers h)
+            val _ = Ar.update (handlers, characterDataHandlerIndex, pos)
+            val _ = cSetHandler p
+          in
+            ()
+          end
+
 in
   (x, handlers)
 end
