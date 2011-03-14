@@ -13,6 +13,8 @@ type startTagHandler      = string -> (string * string) list -> unit
 type endTagHandler        = string -> unit
 type characterDataHandler = string -> unit
 type commentHandler       = string -> unit
+type startCdataHandler    = unit -> unit
+type endCdataHandler      = unit -> unit
 
 (* -------------------------------------------------------------------------- *)
 exception DoNotPanic
@@ -22,6 +24,16 @@ exception CannotReset
 (* -------------------------------------------------------------------------- *)
 (* Return the parser stored in a Finalizable *)
 fun getPointer p = Fz.withValue (p, fn x => x)
+
+(* -------------------------------------------------------------------------- *)
+structure HandlerType0STLElement : STLELEMENT = struct
+
+  type t = (unit -> unit)
+  fun default () = ()
+
+end
+
+structure HT0V = STLVectorFun (structure E = HandlerType0STLElement)
 
 (* -------------------------------------------------------------------------- *)
 structure HandlerType1STLElement : STLELEMENT = struct
@@ -59,6 +71,13 @@ val characterDataHandlers     = HT1V.STLVector NONE
 
 val commentHandlerIndex       = 3
 val commentHandlers           = HT1V.STLVector NONE
+
+val startCdataHandlerIndex    = 4
+val startCdataHandlers        = HT0V.STLVector NONE
+
+val endCdataHandlerIndex      = 5
+val endCdataHandlers          = HT0V.STLVector NONE
+
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -262,6 +281,72 @@ let
           let
             val pos = HT1V.size (HT1V.pushBack commentHandlers h)
             val _ = Ar.update (handlers, commentHandlerIndex, pos)
+            val _ = cSetHandler p
+          in
+            ()
+          end
+in
+  (x, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun setStartCdataSectionHandler (x, handlers) handlerOpt =
+let
+
+  val cSetHandler  =
+    _import "C_SetStartCdataHandler" public: Pt.t -> unit;
+
+  val cUnsetHandler =
+    _import "C_UnsetStartCdataHandler" public: Pt.t -> unit;
+
+  fun callbackHandler 0   = raise DoNotPanic
+  |   callbackHandler pos =
+    HT0V.at startCdataHandlers (pos-1) ()
+
+  val cCall =
+    _export "SML_callStartCdataHandler" : (int -> unit) -> unit;
+  val _ = cCall callbackHandler
+
+  val p   = getPointer x
+  val _ = case handlerOpt of
+            NONE   => cUnsetHandler p
+          | SOME h =>
+          let
+            val pos = HT0V.size (HT0V.pushBack startCdataHandlers h)
+            val _ = Ar.update (handlers, startCdataHandlerIndex, pos)
+            val _ = cSetHandler p
+          in
+            ()
+          end
+in
+  (x, handlers)
+end
+
+(* -------------------------------------------------------------------------- *)
+fun setEndCdataSectionHandler (x, handlers) handlerOpt =
+let
+
+  val cSetHandler  =
+    _import "C_SetEndCdataHandler" public: Pt.t -> unit;
+
+  val cUnsetHandler =
+    _import "C_UnsetEndCdataHandler" public: Pt.t -> unit;
+
+  fun callbackHandler 0   = raise DoNotPanic
+  |   callbackHandler pos =
+    HT0V.at endCdataHandlers (pos-1) ()
+
+  val cCall =
+    _export "SML_callEndCdataHandler" : (int -> unit) -> unit;
+  val _ = cCall callbackHandler
+
+  val p   = getPointer x
+  val _ = case handlerOpt of
+            NONE   => cUnsetHandler p
+          | SOME h =>
+          let
+            val pos = HT0V.size (HT0V.pushBack endCdataHandlers h)
+            val _ = Ar.update (handlers, endCdataHandlerIndex, pos)
             val _ = cSetHandler p
           in
             ()

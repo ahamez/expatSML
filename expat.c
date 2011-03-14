@@ -3,7 +3,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// All C_* functions are imported by the SML side
+// C_* functions are imported by SML
+// SML_* functions are exported by SML
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,3 +91,43 @@ C_UnsetCommentHandler(XML_Parser p)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+static void
+callbackStartCdataHandler(void* data)
+{
+  const int pos = ((int*)data)[4];
+  SML_callStartCdataHandler(pos);
+}
+
+void
+C_SetStartCdataHandler(XML_Parser p)
+{
+  XML_SetStartCdataSectionHandler(p, callbackStartCdataHandler);
+}
+
+void
+C_UnsetStartCdataHandler(XML_Parser p)
+{
+  XML_SetStartCdataSectionHandler(p, NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void
+callbackEndCdataHandler(void* data)
+{
+  const int pos = ((int*)data)[5];
+  SML_callEndCdataHandler(pos);
+}
+
+void
+C_SetEndCdataHandler(XML_Parser p)
+{
+  XML_SetEndCdataSectionHandler(p, callbackEndCdataHandler);
+}
+
+void
+C_UnsetEndCdataHandler(XML_Parser p)
+{
+  XML_SetEndCdataSectionHandler(p, NULL);
+}
