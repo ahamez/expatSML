@@ -33,9 +33,7 @@ signature EXPAT = sig
 
   (* Set parser handlers for both start and end tags *)
   val setElementHandler           : parser
-                                    (* start tag handler *)
                                     -> startTagHandler option
-                                    (* end tag handler *)
                                     -> endTagHandler option
                                     -> parser
 
@@ -56,6 +54,12 @@ signature EXPAT = sig
 
   (* Set parser handler called at the end of a CDATA section *)
   val setEndCdataSectionHandler   : parser
+                                    -> endCdataHandler option
+                                    -> parser
+
+  (* Set parser for both start and end of CDATA sectionq *)
+  val setCdataSectionHandler      : parser
+                                    -> startCdataHandler option
                                     -> endCdataHandler option
                                     -> parser
 

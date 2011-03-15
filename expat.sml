@@ -400,6 +400,15 @@ in
 end
 
 (* -------------------------------------------------------------------------- *)
+fun setCdataSectionHandler x startHandler endHandler =
+let
+  val _ = setStartCdataSectionHandler x startHandler
+  val _ = setEndCdataSectionHandler x endHandler
+in
+  x
+end
+
+(* -------------------------------------------------------------------------- *)
 fun getError (x, _) =
 let
 
