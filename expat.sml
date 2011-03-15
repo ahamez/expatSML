@@ -221,7 +221,8 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = HT2V.size (HT2V.pushBack startHandlers h)
+            val _   = HT2V.pushBack startHandlers h
+            val pos = HT2V.size startHandlers
             val _   = cSetParserHandler (pid, startHandlerIndex, pos-1)
             val _   = cSetHandler p
           in
@@ -257,7 +258,8 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = HT1V.size (HT1V.pushBack endHandlers h)
+            val _   = HT1V.pushBack endHandlers h
+            val pos = HT1V.size endHandlers
             val _   = cSetParserHandler (pid, endHandlerIndex, pos-1)
             val _   = cSetHandler p
           in
@@ -303,7 +305,8 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = HT1V.size (HT1V.pushBack characterDataHandlers h)
+            val _   = HT1V.pushBack characterDataHandlers h
+            val pos = HT1V.size characterDataHandlers
             val _   = cSetParserHandler (pid, characterDataHandlerIndex, pos-1)
             val _   = cSetHandler p
           in
@@ -339,7 +342,8 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = HT1V.size (HT1V.pushBack commentHandlers h)
+            val _   = HT1V.pushBack commentHandlers h
+            val pos = HT1V.size commentHandlers
             val _   = cSetParserHandler (pid, commentHandlerIndex, pos-1)
             val _   = cSetHandler p
           in
@@ -374,7 +378,8 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = HT0V.size (HT0V.pushBack startCdataHandlers h)
+            val _   = HT0V.pushBack startCdataHandlers h
+            val pos = HT0V.size startCdataHandlers
             val _   = cSetParserHandler (pid, startCdataHandlerIndex, pos-1)
             val _   = cSetHandler p
           in
@@ -409,7 +414,8 @@ let
             NONE   => cUnsetHandler p
           | SOME h =>
           let
-            val pos = HT0V.size (HT0V.pushBack endCdataHandlers h)
+            val _   = HT0V.pushBack endCdataHandlers h
+            val pos = HT0V.size endCdataHandlers
             val _   = cSetParserHandler (pid, endCdataHandlerIndex, pos-1)
             val _   = cSetHandler p
           in
