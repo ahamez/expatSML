@@ -212,9 +212,9 @@ let
     HT2V.at startHandlers pos (p, pid) name attrs
   end
 
-  val cCallStartHandler =
+  val cCall =
     _export "SML_callStartHandler" : (int * int * Pt.t * Pt.t -> unit) -> unit;
-  val _ = cCallStartHandler callbackHandler
+  val _ = cCall callbackHandler
 
   val p = getPointer x
   val _ = case handlerOpt of
@@ -248,9 +248,9 @@ let
     HT1V.at endHandlers pos (p, pid) (fetchCString data)
   end
 
-  val cCallEndHandler =
+  val cCall =
     _export "SML_callEndHandler" : (int * int * Pt.t -> unit) -> unit;
-  val _ = cCallEndHandler callbackHandler
+  val _ = cCall callbackHandler
 
   val p = getPointer x
   val _ = case handlerOpt of
