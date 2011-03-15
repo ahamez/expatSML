@@ -25,12 +25,12 @@ open ExpatUtil
 
 (* -------------------------------------------------------------------------- *)
 type parser = Pt.t Fz.t * int
-type startTagHandler      = string -> (string * string) list -> unit
-type endTagHandler        = string -> unit
-type characterDataHandler = string -> unit
-type commentHandler       = string -> unit
-type startCdataHandler    = unit -> unit
-type endCdataHandler      = unit -> unit
+type startTagHandler      = parser -> string -> (string * string) list -> unit
+type endTagHandler        = parser -> string -> unit
+type characterDataHandler = parser -> string -> unit
+type commentHandler       = parser -> string -> unit
+type startCdataHandler    = parser -> unit
+type endCdataHandler      = parser -> unit
 
 (* -------------------------------------------------------------------------- *)
 exception Error of ExpatErrors.error * string * int * int
@@ -43,8 +43,8 @@ fun getPointer p = Fz.withValue (p, fn x => x)
 (* -------------------------------------------------------------------------- *)
 structure HandlerType0STLElement : STLELEMENT = struct
 
-  type t = (unit -> unit)
-  fun default () = ()
+  type t = (parser -> unit)
+  fun default _ = ()
 
 end
 
@@ -53,8 +53,8 @@ structure HT0V = STLVectorFun (structure E = HandlerType0STLElement)
 (* -------------------------------------------------------------------------- *)
 structure HandlerType1STLElement : STLELEMENT = struct
 
-  type t = (string -> unit)
-  fun default _ = ()
+  type t = (parser -> string -> unit)
+  fun default _ _ = ()
 
 end
 
@@ -63,8 +63,8 @@ structure HT1V = STLVectorFun (structure E = HandlerType1STLElement)
 (* -------------------------------------------------------------------------- *)
 structure HandlerType2STLElement : STLELEMENT = struct
 
-  type t = (string -> (string * string) list -> unit)
-  fun default _ _ = ()
+  type t = (parser -> string -> (string * string) list -> unit)
+  fun default _ _ _ = ()
 
 end
 
@@ -107,26 +107,18 @@ val maxHandlers = 64
 val cSetParserHandler =
   _import "C_setParserHandlerCallback" : int * int * int -> unit;
 
-fun initParserHandler i =
-let
-  fun loop j =
-    if j = maxHandlers then
-      ()
-    else
-      cSetParserHandler (i,j,~1)
-in
-  if i = maxParsers then
-    ()
-  else
-    loop 0
-end
-
-val _ = initParserHandler 0
+val cInitParserHandlers =
+  _import "C_initParserHandlers" : unit -> unit;
+val _ = cInitParserHandlers ()
 
 (* We need to affect a unique identifier to each parser in order to associate
    each parser a list of callbacks indices.
 *)
 val nextParserId = ref 0
+
+(* -------------------------------------------------------------------------- *)
+(* Global registry of all parsers, indexed by their pid *)
+val parsers = Ar.array (maxParsers, Fz.new Pt.null)
 
 (* -------------------------------------------------------------------------- *)
 fun mkParser () =
@@ -151,6 +143,9 @@ let
 
   val pid      = !nextParserId
   val _        = nextParserId := !nextParserId + 1
+  (* Register in global val parsers *)
+  val _        = Ar.update (parsers, pid, res)
+
   (* We use the user data facility of expat to store the address of the array
      that contains the indices of the callbacks to the user's handlers.
   *)
@@ -159,6 +154,9 @@ let
 in
   (res, pid)
 end
+
+(* -------------------------------------------------------------------------- *)
+(*fun setUserData (x, pid) data =*)
 
 (* -------------------------------------------------------------------------- *)
 fun parserReset (x, pid) =
@@ -186,7 +184,7 @@ let
   val cUnsetHandler =
     _import "C_UnsetStartElementHandler" public: Pt.t -> unit;
 
-  fun callStartHandler (pos, cName, cAttrs) =
+  fun callbackHandler (pid, pos, cName, cAttrs) =
   let
 
     fun loop acc ptr =
@@ -208,14 +206,15 @@ let
 
     val attrs = loop [] cAttrs
     val name  = fetchCString cName
+    val p = Ar.sub(parsers, pid)
 
   in
-    HT2V.at startHandlers pos name attrs
+    HT2V.at startHandlers pos (p, pid) name attrs
   end
 
   val cCallStartHandler =
-    _export "SML_callStartHandler" : (int * Pt.t * Pt.t -> unit) -> unit;
-  val _ = cCallStartHandler callStartHandler
+    _export "SML_callStartHandler" : (int * int * Pt.t * Pt.t -> unit) -> unit;
+  val _ = cCallStartHandler callbackHandler
 
   val p = getPointer x
   val _ = case handlerOpt of
@@ -223,8 +222,8 @@ let
           | SOME h =>
           let
             val pos = HT2V.size (HT2V.pushBack startHandlers h)
-            val _ = cSetParserHandler (pid, startHandlerIndex, pos-1)
-            val _ = cSetHandler p
+            val _   = cSetParserHandler (pid, startHandlerIndex, pos-1)
+            val _   = cSetHandler p
           in
             ()
           end
@@ -242,12 +241,16 @@ let
   val cUnsetHandler =
     _import "C_UnsetEndElementHandler" public: Pt.t -> unit;
 
-  fun callEndHandler (pos, data) =
-    HT1V.at endHandlers pos (fetchCString data)
+  fun callbackHandler (pid, pos, data) =
+  let
+    val p = Ar.sub(parsers, pid)
+  in
+    HT1V.at endHandlers pos (p, pid) (fetchCString data)
+  end
 
   val cCallEndHandler =
-    _export "SML_callEndHandler" : (int * Pt.t -> unit) -> unit;
-  val _ = cCallEndHandler callEndHandler
+    _export "SML_callEndHandler" : (int * int * Pt.t -> unit) -> unit;
+  val _ = cCallEndHandler callbackHandler
 
   val p = getPointer x
   val _ = case handlerOpt of
@@ -255,8 +258,8 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack endHandlers h)
-            val _ = cSetParserHandler (pid, endHandlerIndex, pos-1)
-            val _ = cSetHandler p
+            val _   = cSetParserHandler (pid, endHandlerIndex, pos-1)
+            val _   = cSetHandler p
           in
             ()
           end
@@ -283,11 +286,16 @@ let
   val cUnsetHandler =
     _import "C_UnsetCharacterDataHandler" public: Pt.t -> unit;
 
-  fun callbackHandler (pos, data, len) =
-    HT1V.at characterDataHandlers pos (fetchCStringWithSize data len)
+  fun callbackHandler (pid, pos, data, len) =
+  let
+    val p = Ar.sub(parsers, pid)
+  in
+    HT1V.at characterDataHandlers pos (p, pid) (fetchCStringWithSize data len)
+  end
 
   val cCall =
-    _export "SML_callCharacterDataHandler" : (int * Pt.t * int -> unit) -> unit;
+    _export "SML_callCharacterDataHandler" : (int * int * Pt.t * int -> unit)
+                                             -> unit;
   val _ = cCall callbackHandler
 
   val p = getPointer x
@@ -296,8 +304,8 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack characterDataHandlers h)
-            val _ = cSetParserHandler (pid, characterDataHandlerIndex, pos-1)
-            val _ = cSetHandler p
+            val _   = cSetParserHandler (pid, characterDataHandlerIndex, pos-1)
+            val _   = cSetHandler p
           in
             ()
           end
@@ -315,11 +323,15 @@ let
   val cUnsetHandler =
     _import "C_UnsetCommentHandler" public: Pt.t -> unit;
 
-  fun callbackHandler (pos, data) =
-    HT1V.at commentHandlers pos (fetchCString data)
+  fun callbackHandler (pid, pos, data) =
+  let
+    val p = Ar.sub(parsers, pid)
+  in
+    HT1V.at commentHandlers pos (p, pid) (fetchCString data)
+  end
 
   val cCall =
-    _export "SML_callCommentHandler" : (int * Pt.t -> unit) -> unit;
+    _export "SML_callCommentHandler" : (int * int * Pt.t -> unit) -> unit;
   val _ = cCall callbackHandler
 
   val p = getPointer x
@@ -328,8 +340,8 @@ let
           | SOME h =>
           let
             val pos = HT1V.size (HT1V.pushBack commentHandlers h)
-            val _ = cSetParserHandler (pid, commentHandlerIndex, pos-1)
-            val _ = cSetHandler p
+            val _   = cSetParserHandler (pid, commentHandlerIndex, pos-1)
+            val _   = cSetHandler p
           in
             ()
           end
@@ -346,11 +358,15 @@ let
   val cUnsetHandler =
     _import "C_UnsetStartCdataHandler" public: Pt.t -> unit;
 
-  fun callbackHandler pos =
-    HT0V.at startCdataHandlers pos ()
+  fun callbackHandler (pid, pos) =
+  let
+    val p = Ar.sub(parsers, pid)
+  in
+    HT0V.at startCdataHandlers pos (p,pid)
+  end
 
   val cCall =
-    _export "SML_callStartCdataHandler" : (int -> unit) -> unit;
+    _export "SML_callStartCdataHandler" : (int * int -> unit) -> unit;
   val _ = cCall callbackHandler
 
   val p = getPointer x
@@ -359,8 +375,8 @@ let
           | SOME h =>
           let
             val pos = HT0V.size (HT0V.pushBack startCdataHandlers h)
-            val _ = cSetParserHandler (pid, startCdataHandlerIndex, pos-1)
-            val _ = cSetHandler p
+            val _   = cSetParserHandler (pid, startCdataHandlerIndex, pos-1)
+            val _   = cSetHandler p
           in
             ()
           end
@@ -377,11 +393,15 @@ let
   val cUnsetHandler =
     _import "C_UnsetEndCdataHandler" public: Pt.t -> unit;
 
-  fun callbackHandler pos =
-    HT0V.at endCdataHandlers pos ()
+  fun callbackHandler (pid, pos) =
+  let
+    val p = Ar.sub(parsers, pid)
+  in
+    HT0V.at endCdataHandlers pos (p,pid)
+  end
 
   val cCall =
-    _export "SML_callEndCdataHandler" : (int -> unit) -> unit;
+    _export "SML_callEndCdataHandler" : (int * int -> unit) -> unit;
   val _ = cCall callbackHandler
 
   val p = getPointer x
@@ -390,8 +410,8 @@ let
           | SOME h =>
           let
             val pos = HT0V.size (HT0V.pushBack endCdataHandlers h)
-            val _ = cSetParserHandler (pid, endCdataHandlerIndex, pos-1)
-            val _ = cSetHandler p
+            val _   = cSetParserHandler (pid, endCdataHandlerIndex, pos-1)
+            val _   = cSetHandler p
           in
             ()
           end

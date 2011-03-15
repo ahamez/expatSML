@@ -3,12 +3,12 @@ signature EXPAT = sig
   type parser
 
   (* Handlers types *)
-  type startTagHandler      = string -> (string * string) list -> unit
-  type endTagHandler        = string -> unit
-  type characterDataHandler = string -> unit
-  type commentHandler       = string -> unit
-  type startCdataHandler    = unit -> unit
-  type endCdataHandler      = unit -> unit
+  type startTagHandler      = parser -> string -> (string * string) list -> unit
+  type endTagHandler        = parser -> string -> unit
+  type characterDataHandler = parser -> string -> unit
+  type commentHandler       = parser -> string -> unit
+  type startCdataHandler    = parser -> unit
+  type endCdataHandler      = parser -> unit
 
   (* Create a new parser *)
   val mkParser                    : unit -> parser
