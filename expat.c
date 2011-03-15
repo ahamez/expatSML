@@ -32,6 +32,7 @@
 
 // Initialization handled by the SML side
 int handlers[MAX_PARSERS][MAX_HANDLERS];
+//          [parser id] | [handler kind] (start|end tag, comment, etc.)
 
 void
 C_setParserHandlerCallback(int parser, int handlerKind, int handler)
