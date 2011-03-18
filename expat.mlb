@@ -6,6 +6,5 @@ in
   ./util.sml
   ./errorCodes.sml
   ./expat.sig
-  ./STLVector/STLVector.sml
   ./expat.sml
 end

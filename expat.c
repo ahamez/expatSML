@@ -25,54 +25,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// val maxParsers in expat.sml
-#define MAX_PARSERS  64
-// val maxHandlers in expat.sml
-#define MAX_HANDLERS 64
-
-int handlers[MAX_PARSERS][MAX_HANDLERS + 1];
-//          [parser id] | [handler kind] (start|end tag, comment, etc.)
-//                      | first element is the parser id from SML
-//                      | (thus the index in the MAX_PARSERS row)
-
-void
-C_initParserHandlers()
-{
-  int i = 0;
-  int j = 0;
-
-  for( i = 0; i < MAX_PARSERS ; ++i )
-  {
-    // set parser id
-    handlers[i][0] = i;
-    for( j = 1; j < MAX_HANDLERS + 1 ; ++j )
-    {
-      // no associated handler for kind 'j'
-      handlers[i][j] = -1;
-    }
-  }
-}
-
-void
-C_setParserHandlerCallback(int parser, int handlerKind, int handler)
-{
-  handlers[parser][handlerKind+1] = handler;
-}
-
-int*
-C_getParserHandlersPtr(int parser)
-{
-  return handlers[parser];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 static void
 callbackStartTagHandler(void* data, const char* el, const char** attr)
 {
-  const int pid = ((int*)data)[0];
-  const int pos = ((int*)data)[1];
-  SML_callStartHandler(pid, pos, (void*)el, (void*)attr);
+  SML_callStartHandler((void*)el, (void*)attr);
 }
 
 void
@@ -92,9 +48,7 @@ C_UnsetStartElementHandler(XML_Parser p)
 static void
 callbackEndTagHandler(void* data, const char* el)
 {
-  const int pid = ((int*)data)[0];
-  const int pos = ((int*)data)[2];
-  SML_callEndHandler(pid, pos, (void*)el);
+  SML_callEndHandler((void*)el);
 }
 
 void
@@ -114,9 +68,7 @@ C_UnsetEndElementHandler(XML_Parser p)
 static void
 callbackCharacterDataHandler(void* data, const char* el, int len)
 {
-  const int pid = ((int*)data)[0];
-  const int pos = ((int*)data)[3];
-  SML_callCharacterDataHandler(pid, pos, (void*)el, len);
+  SML_callCharacterDataHandler((void*)el, len);
 }
 
 void
@@ -136,9 +88,7 @@ C_UnsetCharacterDataHandler(XML_Parser p)
 static void
 callbackCommentHandler(void* data, const char* el)
 {
-  const int pid = ((int*)data)[0];
-  const int pos = ((int*)data)[4];
-  SML_callCommentHandler(pid, pos, (void*)el);
+  SML_callCommentHandler((void*)el);
 }
 
 void
@@ -158,9 +108,7 @@ C_UnsetCommentHandler(XML_Parser p)
 static void
 callbackStartCdataHandler(void* data)
 {
-  const int pid = ((int*)data)[0];
-  const int pos = ((int*)data)[5];
-  SML_callStartCdataHandler(pid, pos);
+  SML_callStartCdataHandler();
 }
 
 void
@@ -180,9 +128,7 @@ C_UnsetStartCdataHandler(XML_Parser p)
 static void
 callbackEndCdataHandler(void* data)
 {
-  const int pid = ((int*)data)[0];
-  const int pos = ((int*)data)[6];
-  SML_callEndCdataHandler(pid, pos);
+  SML_callEndCdataHandler();
 }
 
 void

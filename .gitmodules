@@ -1,3 +1,0 @@
-[submodule "STLVector"]
-	path = STLVector
-	url = git://github.com/ahamez/STLVector.git
