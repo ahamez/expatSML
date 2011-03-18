@@ -44,11 +44,11 @@ fun getPointer p = Fz.withValue (p, fn x => x)
 fun mkParser () =
 let
 
-  val cCreate  =
-    _import "XML_ParserCreate" public: Pt.t -> Pt.t;
+  val cCreate  = _import "XML_ParserCreate"
+                 private: Pt.t -> Pt.t;
 
-  val cFree    =
-    _import "XML_ParserFree" public: Pt.t -> unit;
+  val cFree    = _import "XML_ParserFree"
+                 private: Pt.t -> unit;
 
   val cRes     = cCreate Pt.null
   val res      = Fz.new cRes
@@ -66,8 +66,8 @@ val parser = mkParser ()
 fun parserReset () =
 let
 
-  val cReset  =
-    _import "XML_ParserReset" public: (Pt.t * Pt.t) -> int;
+  val cReset = _import "XML_ParserReset"
+               private: (Pt.t * Pt.t) -> int;
 
   val p = getPointer parser
 
@@ -82,16 +82,16 @@ end
 fun setStartElementHandler handlerOpt =
 let
 
-  val cSetHandler =
-    _import "C_SetStartElementHandler" public: Pt.t -> unit;
+  val cSetHandler = _import "XML_SetStartElementHandler"
+                    private: Pt.t * Pt.t -> unit;
 
-  val cUnsetHandler =
-    _import "C_UnsetStartElementHandler" public: Pt.t -> unit;
+  val cCall       = _export "ExpatSML_callStartHandler"
+                    private: (Pt.t * Pt.t * Pt.t -> unit) -> unit;
 
-  val cCall =
-    _export "SML_callStartHandler" : (Pt.t * Pt.t -> unit) -> unit;
+  val addr        = _address "ExpatSML_callStartHandler"
+                    private: Pt.t;
 
-  fun callbackHandler user (cName, cAttrs) =
+  fun callbackHandler user (_, cName, cAttrs) =
   let
 
     fun loop acc ptr =
@@ -119,9 +119,9 @@ let
 
   val p = getPointer parser
   val _ = case handlerOpt of
-            NONE   => cUnsetHandler p
+            NONE   => cSetHandler (p, Pt.null)
           | SOME u => ( cCall (callbackHandler u)
-                      ; cSetHandler p
+                      ; cSetHandler (p, addr)
                       )
 in
   ()
@@ -131,23 +131,23 @@ end
 fun setEndElementHandler handlerOpt =
 let
 
-  val cSetHandler =
-    _import "C_SetEndElementHandler" public: Pt.t -> unit;
+  val cSetHandler = _import "XML_SetEndElementHandler"
+                    private: Pt.t * Pt.t -> unit;
 
-  val cUnsetHandler =
-    _import "C_UnsetEndElementHandler" public: Pt.t -> unit;
+  val cCall       = _export "ExpatSML_callEndHandler"
+                    private: (Pt.t * Pt.t -> unit) -> unit;
 
-  val cCall =
-    _export "SML_callEndHandler" : (Pt.t -> unit) -> unit;
+  val addr        = _address "ExpatSML_callEndHandler"
+                    private: Pt.t;
 
-  fun callbackHandler user data =
+  fun callbackHandler user (_, data) =
     user (fetchCString data)
 
   val p = getPointer parser
   val _ = case handlerOpt of
-            NONE   => cUnsetHandler p
+            NONE   => cSetHandler (p, Pt.null)
           | SOME u => ( cCall (callbackHandler u)
-                      ; cSetHandler p
+                      ; cSetHandler (p, addr)
                       )
 in
   ()
@@ -165,23 +165,24 @@ end
 (* -------------------------------------------------------------------------- *)
 fun setCharacterDataHandler handlerOpt =
 let
-  val cSetHandler  =
-    _import "C_SetCharacterDataHandler" public: Pt.t -> unit;
 
-  val cUnsetHandler =
-    _import "C_UnsetCharacterDataHandler" public: Pt.t -> unit;
+  val cSetHandler = _import "XML_SetCharacterDataHandler"
+                    private: Pt.t * Pt.t -> unit;
 
-  val cCall =
-    _export "SML_callCharacterDataHandler" : (Pt.t * int -> unit) -> unit;
+  val cCall       = _export "ExpatSML_callCharacterDataHandler"
+                    private: (Pt.t * Pt.t * int -> unit) -> unit;
 
-  fun callbackHandler user (data, len) =
+  val addr        = _address "ExpatSML_callCharacterDataHandler"
+                    private: Pt.t;
+
+  fun callbackHandler user (_, data, len) =
     user (fetchCStringWithSize data len)
 
   val p = getPointer parser
   val _ = case handlerOpt of
-            NONE   => cUnsetHandler p
+            NONE   => cSetHandler (p, Pt.null)
           | SOME u => ( cCall (callbackHandler u)
-                      ; cSetHandler p
+                      ; cSetHandler (p, addr)
                       )
 in
   ()
@@ -190,23 +191,24 @@ end
 (* -------------------------------------------------------------------------- *)
 fun setCommentHandler handlerOpt =
 let
-  val cSetHandler  =
-    _import "C_SetCommentHandler" public: Pt.t -> unit;
 
-  val cUnsetHandler =
-    _import "C_UnsetCommentHandler" public: Pt.t -> unit;
+  val cSetHandler = _import "XML_SetCommentHandler"
+                    private: Pt.t * Pt.t -> unit;
 
-  val cCall =
-    _export "SML_callCommentHandler" : (Pt.t -> unit) -> unit;
+  val cCall       = _export "ExpatSML_callCommentHandler"
+                    private: (Pt.t * Pt.t -> unit) -> unit;
 
-  fun callbackHandler user data =
+  val addr        = _address "ExpatSML_callCommentHandler"
+                    private: Pt.t;
+
+  fun callbackHandler user (_,data) =
     user (fetchCString data)
 
   val p = getPointer parser
   val _ = case handlerOpt of
-            NONE   => cUnsetHandler p
+            NONE   => cSetHandler (p, Pt.null)
           | SOME u => ( cCall (callbackHandler u)
-                      ; cSetHandler p
+                      ; cSetHandler (p, addr)
                       )
 in
   ()
@@ -215,23 +217,23 @@ end
 (* -------------------------------------------------------------------------- *)
 fun setStartCdataSectionHandler handlerOpt =
 let
-  val cSetHandler  =
-    _import "C_SetStartCdataHandler" public: Pt.t -> unit;
+  val cSetHandler = _import "XML_SetStartCdataSectionHandler"
+                    private: Pt.t * Pt.t -> unit;
 
-  val cUnsetHandler =
-    _import "C_UnsetStartCdataHandler" public: Pt.t -> unit;
+  val cCall       = _export "ExpatSML_callStartCdataHandler"
+                    private: (Pt.t -> unit) -> unit;
 
-  val cCall =
-    _export "SML_callStartCdataHandler" : (unit -> unit) -> unit;
+  val addr        = _address "ExpatSML_callStartCdataHandler"
+                    private: Pt.t;
 
-  fun callbackHandler user () =
+  fun callbackHandler user _ =
     user ()
 
   val p = getPointer parser
   val _ = case handlerOpt of
-            NONE   => cUnsetHandler p
+            NONE   => cSetHandler (p, Pt.null)
           | SOME u => ( cCall (callbackHandler u)
-                      ; cSetHandler p
+                      ; cSetHandler (p, addr)
                       )
 in
   ()
@@ -240,23 +242,23 @@ end
 (* -------------------------------------------------------------------------- *)
 fun setEndCdataSectionHandler handlerOpt =
 let
-  val cSetHandler  =
-    _import "C_SetEndCdataHandler" public: Pt.t -> unit;
+  val cSetHandler = _import "XML_SetEndCdataSectionHandler"
+                    private: Pt.t * Pt.t -> unit;
 
-  val cUnsetHandler =
-    _import "C_UnsetEndCdataHandler" public: Pt.t -> unit;
+  val cCall       = _export "ExpatSML_callEndCdataHandler"
+                    private: (Pt.t -> unit) -> unit;
 
-  val cCall =
-    _export "SML_callEndCdataHandler" : (unit -> unit) -> unit;
+  val addr        = _address "ExpatSML_callEndCdataHandler"
+                    private: Pt.t;
 
-  fun callbackHandler user () =
+  fun callbackHandler user _ =
     user ()
 
   val p = getPointer parser
   val _ = case handlerOpt of
-            NONE   => cUnsetHandler p
+            NONE   => cSetHandler (p, Pt.null)
           | SOME u => ( cCall (callbackHandler u)
-                      ; cSetHandler p
+                      ; cSetHandler (p, addr)
                       )
 in
   ()
@@ -275,17 +277,17 @@ end
 fun getError () =
 let
 
-  val cGetErrorCode =
-    _import "XML_GetErrorCode" public: Pt.t -> int;
+  val cGetErrorCode = _import "XML_GetErrorCode"
+                      private: Pt.t -> int;
 
-  val cErrorString =
-    _import "XML_ErrorString" public: int -> Pt.t;
+  val cErrorString  = _import "XML_ErrorString"
+                      private: int -> Pt.t;
 
-  val cGetLine =
-    _import "XML_GetCurrentLineNumber" public: Pt.t ->int;
+  val cGetLine      = _import "XML_GetCurrentLineNumber"
+                      private: Pt.t ->int;
 
-  val cGetColumn =
-    _import "XML_GetCurrentColumnNumber" public: Pt.t ->int;
+  val cGetColumn    = _import "XML_GetCurrentColumnNumber"
+                      private: Pt.t ->int;
 
   val p = getPointer parser
   val errorCode = cGetErrorCode p
@@ -302,8 +304,8 @@ end
 fun parse str isFinal =
 let
 
-  val cParse =
-    _import "XML_Parse" public: (Pt.t * string * int * bool) -> int;
+  val cParse = _import "XML_Parse"
+               private: Pt.t * string * int * bool -> int;
 
   val p = getPointer parser
   val res = cParse (p, str, String.size str, isFinal)
